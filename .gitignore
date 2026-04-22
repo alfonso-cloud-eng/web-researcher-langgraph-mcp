@@ -1,0 +1,11 @@
+/.claude
+.env
+__pycache__/
+*.pyc
+*.pyo
+.venv/
+venv/
+node_modules/
+mcp_browser_server/dist/
+*.egg-info/
+.DS_Store
