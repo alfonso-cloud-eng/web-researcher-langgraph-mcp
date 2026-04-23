@@ -8,7 +8,7 @@ import json
 from typing import Literal
 from langchain_core.messages import HumanMessage, AIMessage, SystemMessage, ToolMessage
 from langchain_core.tools import tool
-from langchain_anthropic import ChatAnthropic
+from langchain_openai import ChatOpenAI
 from agent.state import AgentState
 from agent.prompts import ANALYST_SYSTEM
 
@@ -44,7 +44,12 @@ async def analyst_node(state: AgentState, llm_tools: list, browser_tools: dict) 
     submit_tool = build_submit_answer_tool()
     all_tools = llm_tools + [submit_tool]
 
-    llm = ChatAnthropic(model="claude-sonnet-4-6", temperature=0).bind_tools(all_tools)
+    llm = ChatOpenAI(
+        model=os.getenv("LLM_MODEL_ID", "google/gemma-4-31b-it:free"),
+        openai_api_key=os.getenv("LLM_API_KEY"),
+        openai_api_base=os.getenv("LLM_BASE_URL", "https://openrouter.ai/api/v1"),
+        temperature=0,
+    ).bind_tools(all_tools)
 
     response: AIMessage = await llm.ainvoke(messages)
 

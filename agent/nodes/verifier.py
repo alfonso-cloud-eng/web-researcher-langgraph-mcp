@@ -2,9 +2,10 @@
 Verifier node: independent LLM judge that evaluates the proposed answer.
 Returns PASS (sets final_answer) or FAIL (sends feedback back to Analyst).
 """
+import os
 import json
 from langchain_core.messages import HumanMessage, SystemMessage
-from langchain_anthropic import ChatAnthropic
+from langchain_openai import ChatOpenAI
 from agent.state import AgentState
 from agent.prompts import VERIFIER_SYSTEM
 
@@ -16,7 +17,12 @@ async def verifier_node(state: AgentState) -> dict:
         reasoning_steps="\n".join(state.get("reasoning_steps", [])),
     )
 
-    llm = ChatAnthropic(model="claude-haiku-4-5-20251001", temperature=0)
+    llm = ChatOpenAI(
+        model=os.getenv("LLM_MODEL_ID", "google/gemma-4-31b-it:free"),
+        openai_api_key=os.getenv("LLM_API_KEY"),
+        openai_api_base=os.getenv("LLM_BASE_URL", "https://openrouter.ai/api/v1"),
+        temperature=0,
+    )
     response = await llm.ainvoke([SystemMessage(content=system_prompt)])
 
     content = response.content if isinstance(response.content, str) else str(response.content)
