@@ -36,18 +36,20 @@ def build_graph(tools_by_name: dict, llm_tools: list) -> StateGraph:
 
     # ── Routing functions ─────────────────────────────────────────────────────
 
-    def route_analyst(state: AgentState) -> Literal["navigator", "verifier", "__end__"]:
+    def route_analyst(state: AgentState) -> Literal["navigator", "verifier", "analyst", "__end__"]:
         if state["loop_count"] > max_loops:
             return "__end__"
-        next_step = state.get("_next", "act")
-        if next_step == "answer":
+        next_action = state.get("next_action", "act")
+        if next_action == "answer":
             return "verifier"
-        if next_step == "give_up":
+        if next_action == "give_up":
             return "__end__"
+        if next_action == "noted":
+            return "analyst"  # self-loop: only save_notes were called, keep thinking
         return "navigator"
 
     def route_verifier(state: AgentState) -> Literal["analyst", "__end__"]:
-        return "__end__" if state.get("_next") == "pass" else "analyst"
+        return "__end__" if state.get("next_action") == "pass" else "analyst"
 
     # ── Graph assembly ────────────────────────────────────────────────────────
 
@@ -64,6 +66,7 @@ def build_graph(tools_by_name: dict, llm_tools: list) -> StateGraph:
     graph.add_conditional_edges("analyst", route_analyst, {
         "navigator": "navigator",
         "verifier": "verifier",
+        "analyst": "analyst",  # self-loop for save_note-only turns
         "__end__": END,
     })
     graph.add_edge("navigator", "analyst")

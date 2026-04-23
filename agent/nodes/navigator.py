@@ -4,7 +4,7 @@ refresh the page context. This node calls get_page_context and updates
 current_url.
 """
 from agent.state import AgentState
-from agent.nodes.extractor import extractor_node
+from agent.nodes.extractor import extractor_node, _extract_text
 
 
 async def navigator_node(state: AgentState, tools: dict) -> dict:
@@ -13,7 +13,8 @@ async def navigator_node(state: AgentState, tools: dict) -> dict:
     url_update = {}
     if get_url:
         try:
-            url = await get_url.ainvoke({})
+            raw = await get_url.ainvoke({})
+            url = _extract_text(raw).strip()
             visited = list(state.get("visited_urls", []))
             if url not in visited:
                 visited.append(url)

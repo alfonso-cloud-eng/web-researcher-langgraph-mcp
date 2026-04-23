@@ -8,13 +8,26 @@ from langchain_core.messages import HumanMessage, SystemMessage
 from langchain_openai import ChatOpenAI
 from agent.state import AgentState
 from agent.prompts import VERIFIER_SYSTEM
+from agent.nodes.analyst import format_notes
+
+
+MAX_VERIFIER_FAILS = 2
 
 
 async def verifier_node(state: AgentState) -> dict:
+    # Count prior rejections to break potential PASS/FAIL oscillations
+    history = state.get("history", [])
+    prior_fails = sum(
+        1 for m in history
+        if hasattr(m, "content") and isinstance(m.content, str) and m.content.startswith("[Verifier feedback]")
+    )
+
+    notes_section = format_notes(state.get("notes", []))
+
     system_prompt = VERIFIER_SYSTEM.format(
         question=state["question"],
         proposed_answer=state.get("proposed_answer", ""),
-        reasoning_steps="\n".join(state.get("reasoning_steps", [])),
+        notes_section=notes_section,
     )
 
     llm = ChatOpenAI(
@@ -40,14 +53,21 @@ async def verifier_node(state: AgentState) -> dict:
     feedback = verdict_data.get("feedback", "")
     reason = verdict_data.get("reason", "")
 
+    # Safety valve: if the verifier has already rejected MAX_VERIFIER_FAILS times,
+    # accept the current proposal to avoid infinite rejection loops.
+    if verdict != "PASS" and prior_fails >= MAX_VERIFIER_FAILS:
+        return {
+            "final_answer": state.get("proposed_answer", ""),
+            "next_action": "pass",
+        }
+
     if verdict == "PASS":
         return {
             "final_answer": state.get("proposed_answer", ""),
-            "_next": "pass",
+            "next_action": "pass",
         }
     else:
         # Inject feedback into history so Analyst sees it
-        from langchain_core.messages import HumanMessage
         feedback_msg = HumanMessage(
             content=f"[Verifier feedback] Your answer was rejected.\nReason: {reason}\nGuidance: {feedback}\nPlease continue researching."
         )
@@ -55,5 +75,5 @@ async def verifier_node(state: AgentState) -> dict:
         return {
             "history": new_history,
             "proposed_answer": None,
-            "_next": "fail",
+            "next_action": "fail",
         }
