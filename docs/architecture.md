@@ -17,6 +17,8 @@ The Deep Research Navigator is an autonomous agent that answers research questio
 
 The agent is a LangGraph `StateGraph` compiled with an in-memory checkpointer. All state is carried in a single `AgentState` TypedDict (see [state.md](state.md)).
 
+![LangGraph diagram](img/graph.png)
+
 ```
 START
   │
