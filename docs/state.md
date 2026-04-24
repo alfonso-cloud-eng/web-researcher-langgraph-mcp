@@ -11,13 +11,12 @@ class AgentState(TypedDict):
     # Navigation
     current_url: str
     visited_urls: List[str]
+    visit_log: List[Dict[str, Any]]
     history: List[BaseMessage]
-    reasoning_steps: List[str]
 
     # DOM snapshot (current page only — overwritten on every navigation)
     page_content_markdown: str
     interactive_elements: Dict[int, Dict[str, Any]]
-    current_screenshot: Optional[str]
 
     # Notebook (persistent across all pages)
     notes: List[Dict[str, str]]
@@ -51,8 +50,8 @@ class AgentState(TypedDict):
 |---|---|---|---|
 | `current_url` | `str` | Navigator, Analyst | URL of the page currently in the browser |
 | `visited_urls` | `List[str]` | Navigator, Analyst | All URLs visited during the run (deduplicated) |
-| `history` | `List[BaseMessage]` | Analyst | Full LangChain message history: `HumanMessage`, `AIMessage`, `ToolMessage`. Passed to the LLM on every Analyst call. Grows throughout the run |
-| `reasoning_steps` | `List[str]` | Analyst | Cumulative list of text snippets the LLM produced across turns (for audit/logging). Format: `"Step N: ..."` |
+| `visit_log` | `List[Dict]` | Navigator | Ordered log of every navigation: `[{"url": str, "notes_count": int}]`. Used by the Navigator to detect semantic loops (returning to a URL without adding any notes since the last visit) |
+| `history` | `List[BaseMessage]` | Analyst, Verifier, Navigator | Full LangChain message history: `HumanMessage`, `AIMessage`, `ToolMessage`. Passed to the LLM on every Analyst call. Grows throughout the run |
 
 ### DOM snapshot
 
@@ -62,7 +61,6 @@ These fields describe the **currently loaded page**. They are overwritten on eve
 |---|---|---|---|
 | `page_content_markdown` | `str` | Extractor | Page body in Markdown, max 20 000 chars. Interactive elements appear as `[ID:N]` inline |
 | `interactive_elements` | `Dict[int, Dict]` | Extractor | `{id: {type, text, selector}}` — the element map for the current page. IDs are reassigned fresh on every page load |
-| `current_screenshot` | `Optional[str]` | — | Reserved for multimodal use; always `None` in current implementation |
 
 > **Important:** `interactive_elements` IDs are ephemeral. They are valid only for the page that was loaded when `get_page_context` last ran. After any navigation, old IDs are meaningless. The Analyst must save URLs and titles to `notes` before navigating if it needs them later.
 

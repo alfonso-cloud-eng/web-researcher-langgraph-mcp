@@ -86,7 +86,6 @@ async def analyst_node(state: AgentState, llm_tools: list, browser_tools: dict) 
 
     # Preserve any seeded HumanMessage in the persisted history
     new_history = list(history) + [response]
-    new_steps = list(state.get("reasoning_steps", []))
 
     # Extract any new reasoning text the LLM produced this turn
     turn_reasoning = None
@@ -97,13 +96,9 @@ async def analyst_node(state: AgentState, llm_tools: list, browser_tools: dict) 
         if text_parts:
             turn_reasoning = " ".join(text_parts).strip()
 
-    if turn_reasoning:
-        new_steps.append(f"Step {state['loop_count']}: {turn_reasoning[:300]}")
-
     notes = list(state.get("notes", []))
     updates: dict = {
         "history": new_history,
-        "reasoning_steps": new_steps,
         "loop_count": state["loop_count"] + 1,
         "proposed_answer": None,
         "notes": notes,  # will be mutated in-place below
